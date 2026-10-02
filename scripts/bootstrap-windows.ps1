@@ -110,7 +110,7 @@ if (-not (Test-Path "$Pj\.rev-$BuildRev")) {
             /p:PlatformToolset=v143 /p:WindowsTargetPlatformVersion=10.0
     }
     Remove-Item Env:\CL
-    $lib = Get-ChildItem "$Pj\pjsip-apps\lib\libpjproject-*Release-Dynamic.lib" | Select-Object -First 1
+    $lib = Get-ChildItem "$Pj\lib\libpjproject-*Release-Dynamic.lib" | Select-Object -First 1
     if (-not $lib) { throw 'pjproject: libpjproject .lib not found' }
     New-Item -ItemType File "$Pj\.rev-$BuildRev" | Out-Null
     Write-Host "pjproject: built $($lib.Name)"

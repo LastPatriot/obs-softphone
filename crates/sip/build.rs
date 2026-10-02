@@ -89,7 +89,8 @@ fn unix(tp: &Path, build: &mut cc::Build) {
 /// aggregate library, /MD) with Schannel TLS.
 fn windows(tp: &Path, build: &mut cc::Build) {
     let pj = env_path("PJPROJECT_DIR").unwrap_or_else(|| tp.join("pjproject-x64"));
-    let lib_dir = pj.join("pjsip-apps/lib");
+    // The aggregate lands in the tree's top-level lib\ folder.
+    let lib_dir = pj.join("lib");
     let lib = std::fs::read_dir(&lib_dir)
         .ok()
         .and_then(|entries| {
