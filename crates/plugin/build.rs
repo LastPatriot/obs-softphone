@@ -14,7 +14,21 @@ fn main() {
     if !qt_lib.join("QtWidgets.framework/Headers").is_dir() {
         panic!("Qt headers not found in {}. Run scripts/bootstrap-macos.sh first.", qt_lib.display());
     }
-    let obs = env_path("OBS_APP").unwrap_or_else(|| PathBuf::from("/Applications/OBS.app"));
+    // OBS's libobs is single-architecture, so each slice of a universal
+    // plugin links against the matching OBS build: OBS_APP_ARM64 /
+    // OBS_APP_X86_64, else OBS_APP, else third_party/obs-app-<arch> (from
+    // scripts/fetch-obs-macos.sh), else the installed OBS.
+    let arch = match env::var("CARGO_CFG_TARGET_ARCH").unwrap().as_str() {
+        "aarch64" => "arm64".to_string(),
+        other => other.to_string(),
+    };
+    let per_arch_var = format!("OBS_APP_{}", arch.to_uppercase());
+    println!("cargo:rerun-if-env-changed={per_arch_var}");
+    let fetched = root.join(format!("third_party/obs-app-{arch}"));
+    let obs = env_path(&per_arch_var)
+        .or_else(|| env_path("OBS_APP"))
+        .or_else(|| fetched.is_dir().then_some(fetched))
+        .unwrap_or_else(|| PathBuf::from("/Applications/OBS.app"));
     let fw = obs.join("Contents/Frameworks");
 
     cc::Build::new()

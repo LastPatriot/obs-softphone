@@ -192,12 +192,18 @@ impl SipControl for PjsipEngine {
     }
 }
 
-/// The system CA bundle, since OpenSSL in pjlib loads none by default.
+/// The CA bundle to give pjlib's TLS when the settings name none.
+/// macOS uses Network.framework, which trusts the system store by itself
+/// (and expects DER, not a PEM bundle), so nothing is passed there. Other
+/// platforms' OpenSSL/GnuTLS load no CAs by default, so pass the system's.
 fn default_ca_file() -> Option<PathBuf> {
+    if cfg!(target_os = "macos") {
+        return None;
+    }
     [
-        "/etc/ssl/cert.pem",                  // macOS, Alpine
         "/etc/ssl/certs/ca-certificates.crt", // Debian/Ubuntu
         "/etc/pki/tls/certs/ca-bundle.crt",   // Fedora
+        "/etc/ssl/cert.pem",                  // Alpine, BSDs
     ]
     .into_iter()
     .map(PathBuf::from)

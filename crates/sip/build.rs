@@ -1,17 +1,27 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-//! Compiles the C shim and links the pjproject built by scripts/bootstrap-macos.sh.
+//! Compiles the C shim and links the pjproject built by scripts/bootstrap-macos.sh
+//! for the target architecture (third_party/pjproject-<arch>, opus-<arch>).
 //!
-//! Env overrides: PJPROJECT_DIR (install prefix), OPENSSL_DIR, OPUS_DIR.
+//! Env overrides: PJPROJECT_DIR (install prefix), OPUS_DIR.
 
 use std::env;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 fn main() {
     let root = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap()).join("../..");
-    let prefix = env_path("PJPROJECT_DIR").unwrap_or_else(|| root.join("third_party/pjproject-install"));
+    // The bootstrap script names directories after Apple's arch names.
+    let arch = match env::var("CARGO_CFG_TARGET_ARCH").unwrap().as_str() {
+        "aarch64" => "arm64".to_string(),
+        other => other.to_string(),
+    };
+    let tp = root.join("third_party");
+    let prefix = env_path("PJPROJECT_DIR").unwrap_or_else(|| tp.join(format!("pjproject-{arch}")));
     let pc_path = prefix.join("lib/pkgconfig/libpjproject.pc");
     let pc = std::fs::read_to_string(&pc_path).unwrap_or_else(|e| {
-        panic!("{}: {e}\nRun scripts/bootstrap-macos.sh first (or set PJPROJECT_DIR).", pc_path.display())
+        panic!(
+            "{}: {e}\nRun ARCHS={arch} scripts/bootstrap-macos.sh first (or set PJPROJECT_DIR).",
+            pc_path.display()
+        )
     });
 
     let field = |name: &str| -> Vec<String> {
@@ -54,11 +64,9 @@ fn main() {
         }
     }
 
-    for (var, formula) in [("OPENSSL_DIR", "openssl@3"), ("OPUS_DIR", "opus")] {
-        let dir = env_path(var).unwrap_or_else(|| Path::new("/opt/homebrew/opt").join(formula));
-        println!("cargo:rustc-link-search=native={}", dir.join("lib").display());
-        println!("cargo:rerun-if-env-changed={var}");
-    }
+    let opus = env_path("OPUS_DIR").unwrap_or_else(|| tp.join(format!("opus-{arch}")));
+    println!("cargo:rustc-link-search=native={}", opus.join("lib").display());
+    println!("cargo:rerun-if-env-changed=OPUS_DIR");
 
     println!("cargo:rerun-if-changed=shim");
     println!("cargo:rerun-if-changed={}", pc_path.display());

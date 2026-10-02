@@ -6,25 +6,33 @@ The plugin is a Cargo workspace (Rust) with a small C shim over PJSIP and a Qt d
 
 ## macOS
 
-**You need:** Rust 1.85 or newer ([rustup](https://rustup.rs)), the Xcode command-line tools (`xcode-select --install`), Homebrew with `openssl@3` and `opus` (`brew install openssl@3 opus`), and OBS Studio 30+ in `/Applications`.
+**You need:** Rust 1.85 or newer ([rustup](https://rustup.rs)) and the Xcode command-line tools (`xcode-select --install`). OBS Studio 30+ in `/Applications` is used if present. Nothing from Homebrew is needed.
 
 ```sh
 git clone https://github.com/lastpatriot/obs-softphone
 cd obs-softphone
-scripts/bootstrap-macos.sh       # once: builds pjproject and fetches OBS's Qt headers into third_party/
+scripts/bootstrap-macos.sh       # once: builds Opus and pjproject and fetches OBS's Qt headers into third_party/
 cargo test --workspace           # unit tests (no OBS or network needed)
 scripts/install-dev-macos.sh     # builds and installs into ~/Library/Application Support/obs-studio/plugins
 ```
 
 Restart OBS after installing. `scripts/install-dev-macos.sh --release` builds an optimised version.
 
-- `scripts/package-macos.sh` builds a release and wraps it as `dist/obs-softphone.plugin`, plus a zip. The install script uses it too.
-- No OBS installed (e.g. on CI)? `scripts/fetch-obs-macos.sh` downloads the official OBS release and keeps just the frameworks the plugin links against, in `third_party/obs-app`. Then build with `OBS_APP=$PWD/third_party/obs-app`. `OBS_FLAVOR=Intel` fetches the Intel build.
+**Universal build and installer** (what CI does):
 
-**CI:** `.github/workflows/build.yml` runs the same steps on GitHub's Apple Silicon Macs for every push and pull request (clippy with warnings as errors, tests, the media-clock check, packaging). The packaged zip is attached to each run as an artifact.
+```sh
+ARCHS="arm64 x86_64" scripts/bootstrap-macos.sh
+scripts/fetch-obs-macos.sh arm64 x86_64        # OBS's arm64 and Intel frameworks (libobs is single-arch)
+rustup target add aarch64-apple-darwin x86_64-apple-darwin
+ARCHS="arm64 x86_64" scripts/package-macos.sh  # dist/: plugin bundle, .zip and .pkg
+```
 
-- `bootstrap-macos.sh` builds pjproject 2.17 (static, no video or sound devices, with Opus and OpenSSL) and downloads the obs-deps Qt 6 headers matching OBS 32.2 (hash-checked). Re-run it after changing pjproject's `config_site.h` in the script.
-- The plugin links against the frameworks inside `/Applications/OBS.app`. Set `OBS_APP` to use another OBS, and `PJPROJECT_DIR`, `QT6_DEPS_DIR`, `OPENSSL_DIR`, `OPUS_DIR` to use other dependency builds.
+`package-macos.sh` builds each architecture, joins them with `lipo`, ad-hoc signs the bundle, and builds an unsigned installer that puts it in `~/Library/Application Support/obs-studio/plugins`. `install-dev-macos.sh` uses it for a host-only debug build.
+
+**CI:** `.github/workflows/build.yml` runs these steps on GitHub's Macs for every push and pull request: clippy with warnings as errors, tests, the media-clock check, and the universal package (checked for both architectures, no OpenSSL, the right install path). The `.pkg` and `.zip` are attached to each run. Pushing a `v*` tag also creates a **draft** GitHub Release with them and a `SHA256SUMS.txt`.
+
+- `bootstrap-macos.sh` builds Opus 1.5.2 and pjproject 2.17 (static, no video or sound devices) into `third_party/opus-<arch>` and `third_party/pjproject-<arch>`, and downloads the obs-deps Qt 6 headers matching OBS 32.2 (all hash-checked). TLS uses Apple's **Network.framework** (TLS 1.3, the system trust store), so there's no OpenSSL. It builds the host's architecture; `ARCHS="arm64 x86_64"` builds both. Bump `BUILD_REV` in the script after changing pjproject's options.
+- The plugin links against OBS's own frameworks: `third_party/obs-app-<arch>` if present (from `fetch-obs-macos.sh`), else `/Applications/OBS.app`. Override with `OBS_APP_ARM64` / `OBS_APP_X86_64` or `OBS_APP`, and `PJPROJECT_DIR`, `OPUS_DIR`, `QT6_DEPS_DIR` for other dependency builds.
 
 ## Developer tools
 

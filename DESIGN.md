@@ -167,8 +167,9 @@ Status, caller and timer; Answer, End call, Retry, Take the line back, Mute call
 ## 8. Build and distribution
 - **Cargo workspace.** `build.rs` scripts compile the C shim, the Qt dock and the chime with the `cc` crate and link pjproject; the OBS entry points are exported from Rust.
 - **macOS dev setup:** `scripts/bootstrap-macos.sh` builds pjproject into `third_party/` and fetches the obs-deps Qt 6 headers that match OBS. `scripts/install-dev-macos.sh` builds and installs `obs-softphone.plugin`.
-- **TLS backend:** dev builds link Homebrew OpenSSL statically (with the system CA bundle passed explicitly). Release builds should use the OS's own TLS through PJSIP's backends (Apple on macOS, Schannel on Windows, OpenSSL/GnuTLS from the distribution on Linux).
-- **Targets:** OBS 30+ on macOS (universal), Windows x64, Ubuntu 22.04/24.04. Built by CI per platform; installers `.pkg`, `.exe`, `.deb`.
+- **TLS backend:** the OS's own TLS through PJSIP's backends. **macOS:** Apple's Network.framework (TLS 1.3, system trust store, no OpenSSL). Windows: Schannel (planned). Linux: the distribution's OpenSSL or GnuTLS (planned).
+- **macOS universal build:** OBS's `libobs` is single-architecture, so each slice links against the matching official OBS build (arm64 and Intel), and `lipo` joins them. Opus and pjproject are built per architecture.
+- **Targets:** OBS 30+ on macOS (universal), Windows x64, Ubuntu 22.04/24.04. Built by CI per platform; installers `.pkg` (done: unsigned, installs into the user's OBS plugins folder like OBS's plugin template), `.exe`, `.deb`. A `v*` tag creates a draft GitHub Release.
 
 ---
 
