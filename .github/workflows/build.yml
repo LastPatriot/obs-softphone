@@ -17,35 +17,33 @@ permissions:
 
 jobs:
   macos:
-    name: macOS (Apple Silicon)
+    name: macOS
     runs-on: macos-15
     env:
       OBS_VERSION: "32.2.2"
-      OBS_FLAVOR: Apple
-      OBS_APP: ${{ github.workspace }}/third_party/obs-app
+      ARCHS: arm64 x86_64
     steps:
       - uses: actions/checkout@v4
 
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
+          targets: aarch64-apple-darwin, x86_64-apple-darwin
 
-      - name: Homebrew dependencies
-        run: brew install opus openssl@3
-
-      # pjproject, the Qt headers and the OBS frameworks take minutes to fetch
-      # and build; they only change when these scripts do.
+      # Opus, pjproject (both architectures), the Qt headers and the OBS
+      # frameworks take minutes to fetch and build; they only change when
+      # these scripts do.
       - name: Cache native dependencies
         uses: actions/cache@v4
         with:
           path: third_party
-          key: macos-arm64-native-${{ hashFiles('scripts/bootstrap-macos.sh', 'scripts/fetch-obs-macos.sh') }}
+          key: macos-universal-native-${{ hashFiles('scripts/bootstrap-macos.sh', 'scripts/fetch-obs-macos.sh') }}
 
-      - name: Build pjproject, fetch Qt headers
+      - name: Build Opus and pjproject, fetch Qt headers
         run: scripts/bootstrap-macos.sh
 
       - name: Fetch OBS frameworks
-        run: scripts/fetch-obs-macos.sh
+        run: scripts/fetch-obs-macos.sh arm64 x86_64
 
       - uses: Swatinem/rust-cache@v2
 
@@ -58,11 +56,43 @@ jobs:
       - name: Media clock check
         run: cargo run --quiet -p softphone-sip --example media_clock
 
-      - name: Package plugin
+      - name: Package universal plugin and installer
         run: scripts/package-macos.sh
+
+      - name: Check the package
+        run: |
+          lipo -archs dist/obs-softphone.plugin/Contents/MacOS/obs-softphone | grep -q 'x86_64 arm64'
+          ! otool -L dist/obs-softphone.plugin/Contents/MacOS/obs-softphone | grep -E 'ssl|crypto|homebrew'
+          pkgutil --payload-files dist/*.pkg | grep -q 'obs-studio/plugins/obs-softphone.plugin'
 
       - uses: actions/upload-artifact@v4
         with:
-          name: obs-softphone-macos-arm64
-          path: dist/*.zip
+          name: obs-softphone-macos
+          path: |
+            dist/*.pkg
+            dist/*.zip
           if-no-files-found: error
+
+  # On a version tag: collect the installers into a draft GitHub Release,
+  # to be reviewed and published by hand.
+  release:
+    name: Draft release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Checksums
+        run: cd artifacts && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          generate_release_notes: true
+          files: artifacts/*

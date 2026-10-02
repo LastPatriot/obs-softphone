@@ -15,7 +15,7 @@ It works with any standard SIP server (Asterisk, FreeSWITCH, FreePBX, 3CX, SIP t
 
 **Requirements:** OBS Studio 30 or newer. macOS 12+, Windows 10/11 (64-bit) or Ubuntu 22.04/24.04. A SIP account that can receive calls.
 
-> **Status:** works on macOS (development builds). Downloadable installers for macOS, Windows and Linux are being prepared.
+> **Status:** works on macOS (universal: Apple Silicon and Intel). Windows and Linux builds are being prepared.
 
 ---
 
@@ -106,7 +106,6 @@ Third-party components in the built plugin:
 |---|---|---|
 | PJSIP (pjproject) | GPL-2.0-or-later (or commercial) | Linked statically |
 | Opus | BSD-3-Clause | Linked statically |
-| OpenSSL 3 (dev builds) | Apache-2.0 | Linked statically. Compatible with the GPLv3 that "or later" allows; release builds are meant to use the OS's own TLS instead (DESIGN.md §8). |
 | Qt 6, libobs, obs-frontend-api | LGPL-3.0 / GPL-2.0-or-later | Provided by OBS at runtime |
 | Rust crates (serde, keyring, ...) | MIT / Apache-2.0 | Linked statically |
 

@@ -1,32 +1,41 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Downloads an official OBS release and keeps only the frameworks the plugin
-# links against, in third_party/obs-app (use OBS_APP=third_party/obs-app).
-# For CI and machines without OBS installed.
-#   OBS_VERSION=32.2.2 OBS_FLAVOR=Apple|Intel scripts/fetch-obs-macos.sh
+# Downloads official OBS releases and keeps only the frameworks the plugin
+# links against, in third_party/obs-app-<arch> (found by the build).
+# libobs is single-architecture, so a universal plugin needs both.
+#   scripts/fetch-obs-macos.sh [arm64] [x86_64]     (default: the host's)
+#   OBS_VERSION=32.2.2
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TP="$ROOT/third_party"
 OBS_VERSION="${OBS_VERSION:-32.2.2}"
-OBS_FLAVOR="${OBS_FLAVOR:-Apple}"
-DEST="$TP/obs-app/Contents/Frameworks"
+ARCHS=("$@")
+[[ ${#ARCHS[@]} -gt 0 ]] || ARCHS=("$(uname -m)")
 
-if [[ -f "$DEST/obs-frontend-api.dylib" ]]; then
-  echo "OBS frameworks: already present"
-  exit 0
-fi
-
-mkdir -p "$TP" "$DEST"
-DMG="$TP/obs.dmg"
-MNT="$TP/obs-mnt"
-curl -fsSL -o "$DMG" \
-  "https://github.com/obsproject/obs-studio/releases/download/$OBS_VERSION/OBS-Studio-$OBS_VERSION-macOS-$OBS_FLAVOR.dmg"
-mkdir -p "$MNT"
-hdiutil attach -nobrowse -readonly -noautoopen -mountpoint "$MNT" "$DMG" >/dev/null
-trap 'hdiutil detach "$MNT" -quiet || true; rm -f "$DMG"' EXIT
-SRC="$MNT/OBS.app/Contents/Frameworks"
-for item in libobs.framework QtCore.framework QtGui.framework QtWidgets.framework obs-frontend-api.dylib; do
-  ditto "$SRC/$item" "$DEST/$item"
+for arch in "${ARCHS[@]}"; do
+  case "$arch" in
+    arm64) flavor=Apple ;;
+    x86_64) flavor=Intel ;;
+    *) echo "unknown arch $arch" >&2; exit 1 ;;
+  esac
+  DEST="$TP/obs-app-$arch/Contents/Frameworks"
+  if [[ -f "$DEST/obs-frontend-api.dylib" ]]; then
+    echo "OBS frameworks ($arch): already present"
+    continue
+  fi
+  mkdir -p "$DEST"
+  DMG="$TP/obs-$arch.dmg"
+  MNT="$TP/obs-mnt-$arch"
+  curl -fsSL -o "$DMG" \
+    "https://github.com/obsproject/obs-studio/releases/download/$OBS_VERSION/OBS-Studio-$OBS_VERSION-macOS-$flavor.dmg"
+  mkdir -p "$MNT"
+  hdiutil attach -nobrowse -readonly -noautoopen -mountpoint "$MNT" "$DMG" >/dev/null
+  SRC="$MNT/OBS.app/Contents/Frameworks"
+  for item in libobs.framework QtCore.framework QtGui.framework QtWidgets.framework obs-frontend-api.dylib; do
+    ditto "$SRC/$item" "$DEST/$item"
+  done
+  hdiutil detach "$MNT" -quiet
+  rm -rf "$DMG" "$MNT"
+  echo "OBS $OBS_VERSION ($flavor) frameworks in $DEST"
 done
-echo "OBS $OBS_VERSION ($OBS_FLAVOR) frameworks in $DEST"
