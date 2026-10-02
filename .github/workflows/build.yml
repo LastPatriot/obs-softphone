@@ -1,0 +1,68 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+name: Build
+
+on:
+  push:
+    branches: [main, release, "feature/**", "fix/**", "hotfix/**"]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  macos:
+    name: macOS (Apple Silicon)
+    runs-on: macos-15
+    env:
+      OBS_VERSION: "32.2.2"
+      OBS_FLAVOR: Apple
+      OBS_APP: ${{ github.workspace }}/third_party/obs-app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Homebrew dependencies
+        run: brew install opus openssl@3
+
+      # pjproject, the Qt headers and the OBS frameworks take minutes to fetch
+      # and build; they only change when these scripts do.
+      - name: Cache native dependencies
+        uses: actions/cache@v4
+        with:
+          path: third_party
+          key: macos-arm64-native-${{ hashFiles('scripts/bootstrap-macos.sh', 'scripts/fetch-obs-macos.sh') }}
+
+      - name: Build pjproject, fetch Qt headers
+        run: scripts/bootstrap-macos.sh
+
+      - name: Fetch OBS frameworks
+        run: scripts/fetch-obs-macos.sh
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Tests
+        run: cargo test --workspace
+
+      - name: Media clock check
+        run: cargo run --quiet -p softphone-sip --example media_clock
+
+      - name: Package plugin
+        run: scripts/package-macos.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: obs-softphone-macos-arm64
+          path: dist/*.zip
+          if-no-files-found: error
