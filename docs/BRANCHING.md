@@ -29,7 +29,7 @@ Enforced by the ruleset in [`.github/rulesets/release.json`](../.github/rulesets
 - **Changes only through a pull request.** No direct pushes, not even by admins (the ruleset has no bypass list).
 - **No force-push, no deletion.**
 - **All review conversations resolved** before merging.
-- **CI must pass.** Added once the build workflow exists: the `required_status_checks` rule lists the CI job names.
+- **CI must pass:** the `required_status_checks` rule lists the CI jobs (currently `macOS (Apple Silicon)`). Add each new platform's job name there when its build is added.
 
 `main` has a lighter ruleset ([`.github/rulesets/main.json`](../.github/rulesets/main.json)): no force-push and no deletion.
 
