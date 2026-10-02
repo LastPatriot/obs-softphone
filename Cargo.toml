@@ -1,0 +1,19 @@
+[workspace]
+resolver = "3"
+members = ["crates/core", "crates/sip", "crates/plugin", "crates/cli"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "GPL-2.0-or-later"
+rust-version = "1.85"
+
+[workspace.dependencies]
+softphone-core = { path = "crates/core" }
+softphone-sip = { path = "crates/sip" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+cc = "1"
+
+[profile.release]
+panic = "abort"

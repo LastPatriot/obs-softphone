@@ -1,0 +1,9 @@
+[package]
+name = "softphone-core"
+description = "Call-control logic for the OBS softphone: no PJSIP, OBS or Qt (DESIGN.md §3.5)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]

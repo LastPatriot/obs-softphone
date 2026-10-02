@@ -1,0 +1,15 @@
+[package]
+name = "softphone-cli"
+description = "Runs the softphone line without OBS, for testing against the real server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "softphone-cli"
+path = "src/main.rs"
+
+[dependencies]
+softphone-core.workspace = true
+softphone-sip.workspace = true
