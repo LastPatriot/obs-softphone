@@ -2,7 +2,7 @@
 
 The plugin is a Cargo workspace (Rust) with a small C shim over PJSIP and a Qt dock in C++. See [DESIGN.md](../DESIGN.md) for how it fits together.
 
-> Today the build scripts cover **macOS**. Windows and Linux builds are being added together with the CI workflow.
+> The build scripts cover **macOS** and **Windows**. Linux is being added.
 
 ## macOS
 
@@ -29,10 +29,27 @@ ARCHS="arm64 x86_64" scripts/package-macos.sh  # dist/: plugin bundle, .zip and 
 
 `package-macos.sh` builds each architecture, joins them with `lipo`, ad-hoc signs the bundle, and builds an unsigned installer that puts it in `~/Library/Application Support/obs-studio/plugins`. `install-dev-macos.sh` uses it for a host-only debug build.
 
-**CI:** `.github/workflows/build.yml` runs these steps on GitHub's Macs for every push and pull request: clippy with warnings as errors, tests, the media-clock check, and the universal package (checked for both architectures, no OpenSSL, the right install path). The `.pkg` and `.zip` are attached to each run. Pushing a `v*` tag also creates a **draft** GitHub Release with them and a `SHA256SUMS.txt`.
+**CI:** `.github/workflows/build.yml` runs these steps on GitHub's Macs (and the Windows steps on GitHub's Windows machines) for every push and pull request: clippy with warnings as errors, tests, the media-clock check, and the universal package (checked for both architectures, no OpenSSL, the right install path). The `.pkg` and `.zip` are attached to each run. Pushing a `v*` tag also creates a **draft** GitHub Release with them and a `SHA256SUMS.txt`.
 
 - `bootstrap-macos.sh` builds Opus 1.5.2 and pjproject 2.17 (static, no video or sound devices) into `third_party/opus-<arch>` and `third_party/pjproject-<arch>`, and downloads the obs-deps Qt 6 headers matching OBS 32.2 (all hash-checked). TLS uses Apple's **Network.framework** (TLS 1.3, the system trust store), so there's no OpenSSL. It builds the host's architecture; `ARCHS="arm64 x86_64"` builds both. Bump `BUILD_REV` in the script after changing pjproject's options.
 - The plugin links against OBS's own frameworks: `third_party/obs-app-<arch>` if present (from `fetch-obs-macos.sh`), else `/Applications/OBS.app`. Override with `OBS_APP_ARM64` / `OBS_APP_X86_64` or `OBS_APP`, and `PJPROJECT_DIR`, `OPUS_DIR`, `QT6_DEPS_DIR` for other dependency builds.
+
+## Windows
+
+**You need:** Rust 1.85 or newer (MSVC toolchain, the rustup default), Visual Studio 2022 or its Build Tools with the **Desktop development with C++** workload, CMake, Git, and PowerShell 7. For the installer: [Inno Setup 6](https://jrsoftware.org/isinfo.php).
+
+From an **x64 Native Tools / Developer PowerShell for VS 2022** (so `cl`, `msbuild`, `dumpbin` and `lib` are on the path):
+
+```powershell
+git clone https://github.com/lastpatriot/obs-softphone
+cd obs-softphone
+pwsh scripts\bootstrap-windows.ps1      # once: Opus, pjproject, Qt and OBS import libraries into third_party\
+cargo test --workspace
+pwsh scripts\package-windows.ps1        # dist\: plugin folder, .zip and the installer .exe
+```
+
+- `bootstrap-windows.ps1` builds Opus 1.5.2 (CMake) and pjproject 2.17 (MSBuild, the `libpjproject` aggregate, `Release-Dynamic` = `/MD`). TLS uses **Windows Schannel** (system certificate store, no OpenSSL). It also downloads the obs-deps Qt 6 package matching OBS 32.2 (headers and import libraries), and generates import libraries for `obs.dll` and `obs-frontend-api.dll` from the official OBS release. All downloads are hash-checked. Bump `$BuildRev` in the script after changing pjproject's options.
+- The plugin follows OBS's Windows layout, `obs-softphone\bin\64bit\obs-softphone.dll`. The installer puts it in `C:\ProgramData\obs-studio\plugins\obs-softphone` (needs administrator rights). To try a build without the installer, copy `dist\obs-softphone` there.
 
 ## Developer tools
 

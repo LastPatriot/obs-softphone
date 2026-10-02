@@ -14,9 +14,10 @@ ARCHS=("$@")
 [[ ${#ARCHS[@]} -gt 0 ]] || ARCHS=("$(uname -m)")
 
 for arch in "${ARCHS[@]}"; do
+  # SHA-256 of the official 32.2.2 downloads (GitHub release asset digests).
   case "$arch" in
-    arm64) flavor=Apple ;;
-    x86_64) flavor=Intel ;;
+    arm64) flavor=Apple; sha=920d6f26703d2df6e4085bd3c1cbed30488325084136c7a6e9e37021fbd6aaf7 ;;
+    x86_64) flavor=Intel; sha=f8d8afe3dffdc86efa0698c02ff0c997866bac3e6208ddaf56d37108baacf197 ;;
     *) echo "unknown arch $arch" >&2; exit 1 ;;
   esac
   DEST="$TP/obs-app-$arch/Contents/Frameworks"
@@ -29,6 +30,9 @@ for arch in "${ARCHS[@]}"; do
   MNT="$TP/obs-mnt-$arch"
   curl -fsSL -o "$DMG" \
     "https://github.com/obsproject/obs-studio/releases/download/$OBS_VERSION/OBS-Studio-$OBS_VERSION-macOS-$flavor.dmg"
+  if [[ "$OBS_VERSION" == 32.2.2 ]]; then
+    echo "$sha  $DMG" | shasum -a 256 -c - >/dev/null
+  fi
   mkdir -p "$MNT"
   hdiutil attach -nobrowse -readonly -noautoopen -mountpoint "$MNT" "$DMG" >/dev/null
   SRC="$MNT/OBS.app/Contents/Frameworks"

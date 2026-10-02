@@ -204,13 +204,23 @@ mod tests {
             let mut next: i16 = 0;
             for _ in 0..2000 {
                 let chunk: Vec<i16> = (0..1024).map(|_| { next = next.wrapping_add(1); next }).collect();
+                // Wait for room rather than dropping: the i16 counter wraps
+                // every 65536 samples, so a dropped run longer than half of
+                // that would look like going backwards. With no drops, the
+                // reader's skips stay below CAPACITY.
+                while p.stats().queued + chunk.len() > CAPACITY {
+                    std::thread::yield_now();
+                }
                 p.push(&chunk);
                 std::thread::yield_now();
             }
         });
         let mut out = vec![0; 960];
         let mut last: Option<i16> = None;
-        for _ in 0..2000 {
+        // Read until the writer is done (it waits for room, so stopping early
+        // would hang it). Less than TARGET left can't be read on purpose: an
+        // unprimed reader waits for TARGET.
+        while !producer.is_finished() || f.stats().queued >= TARGET {
             f.pop(&mut out);
             for &s in out.iter().filter(|&&s| s != 0) {
                 if let Some(prev) = last {

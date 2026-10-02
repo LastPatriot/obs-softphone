@@ -15,7 +15,7 @@ It works with any standard SIP server (Asterisk, FreeSWITCH, FreePBX, 3CX, SIP t
 
 **Requirements:** OBS Studio 30 or newer. macOS 12+, Windows 10/11 (64-bit) or Ubuntu 22.04/24.04. A SIP account that can receive calls.
 
-> **Status:** works on macOS (universal: Apple Silicon and Intel). Windows and Linux builds are being prepared.
+> **Status:** builds for macOS (universal: Apple Silicon and Intel) and Windows (x64). Linux is being prepared.
 
 ---
 

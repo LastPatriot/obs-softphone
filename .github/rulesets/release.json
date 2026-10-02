@@ -39,6 +39,9 @@
         "required_status_checks": [
           {
             "context": "macOS"
+          },
+          {
+            "context": "Windows"
           }
         ]
       }
