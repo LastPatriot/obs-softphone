@@ -34,9 +34,15 @@ static char g_proxy[300];
 static char g_stun[256];
 static const char *g_transport_param = "tls";
 
+#if defined(_MSC_VER)
+#define SP_THREAD_LOCAL __declspec(thread)
+#else
+#define SP_THREAD_LOCAL __thread
+#endif
+
 static void ensure_thread(void)
 {
-	static __thread pj_thread_desc desc;
+	static SP_THREAD_LOCAL pj_thread_desc desc;
 	pj_thread_t *thread;
 
 	if (!pj_thread_is_registered())

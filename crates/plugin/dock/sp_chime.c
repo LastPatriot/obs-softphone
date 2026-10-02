@@ -6,6 +6,7 @@
  * stream or the caller. macOS: AudioServices (system sound output);
  * Windows: PlaySound. Elsewhere it is silent.
  */
+#define _USE_MATH_DEFINES /* M_PI on MSVC */
 #include <math.h>
 #include <stdint.h>
 #include <stdio.h>
