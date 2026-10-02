@@ -18,6 +18,11 @@ scripts/install-dev-macos.sh     # builds and installs into ~/Library/Applicatio
 
 Restart OBS after installing. `scripts/install-dev-macos.sh --release` builds an optimised version.
 
+- `scripts/package-macos.sh` builds a release and wraps it as `dist/obs-softphone.plugin`, plus a zip. The install script uses it too.
+- No OBS installed (e.g. on CI)? `scripts/fetch-obs-macos.sh` downloads the official OBS release and keeps just the frameworks the plugin links against, in `third_party/obs-app`. Then build with `OBS_APP=$PWD/third_party/obs-app`. `OBS_FLAVOR=Intel` fetches the Intel build.
+
+**CI:** `.github/workflows/build.yml` runs the same steps on GitHub's Apple Silicon Macs for every push and pull request (clippy with warnings as errors, tests, the media-clock check, packaging). The packaged zip is attached to each run as an artifact.
+
 - `bootstrap-macos.sh` builds pjproject 2.17 (static, no video or sound devices, with Opus and OpenSSL) and downloads the obs-deps Qt 6 headers matching OBS 32.2 (hash-checked). Re-run it after changing pjproject's `config_site.h` in the script.
 - The plugin links against the frameworks inside `/Applications/OBS.app`. Set `OBS_APP` to use another OBS, and `PJPROJECT_DIR`, `QT6_DEPS_DIR`, `OPENSSL_DIR`, `OPUS_DIR` to use other dependency builds.
 
